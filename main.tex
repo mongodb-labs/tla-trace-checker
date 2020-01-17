@@ -230,7 +230,7 @@ MBTC with a distributed system requires a partial order of trace events; we achi
 % TODO: cite mongodb-labs/repl-trace-checker
 We wrote a 484-line Python script to post-process trace logs. The script merges the replicas' logs and sorts them by timestamp to obtain a sequence of trace events. These events describe individual replicas' states at the moment of each trace event, from which the script constructs a sequence of states for the entire replica set. The script begins with a known initial state, combines it with the first trace event to determine the next state, and so on.
 
-
+% test comment
 
 Merge and process logs, construct Trace.tla and Trace.cfg
 We considered either a Java harness that fed trace inputs to the TLC internal API, and we tried Pressler's method. Since the former was not fully implemented in Java for us, and the latter already works and includes nice Toolbox diagnostics, we stuck w/ the latter. We also considered Pressler's suggestion of using his method w/ a custom operator that avoids passing through TLA+ tuples as the repr of the trace, we didn't need to do that either.
