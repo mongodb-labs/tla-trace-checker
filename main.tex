@@ -6,6 +6,7 @@
 
 \documentclass{vldb}
 \usepackage{graphicx}
+\usepackage{pgfplots}
 \usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
 
 % Include information below and uncomment for camera ready
@@ -52,15 +53,8 @@
 % without further effort on your part as the last section in
 % the body of your article BEFORE References or any Appendices.
 
-\numberofauthors{2} %  in this sample file, there are a *total*
-% of EIGHT authors. SIX appear on the 'first-page' (for formatting
-% reasons) and the remaining two appear in the \additionalauthors section.
-
+\numberofauthors{2} %  
 \author{
-% You can go ahead and credit any number of authors here,
-% e.g. one 'row of three' or two rows (consisting of one row of three
-% and a second row of one, two or three).
-%
 % The command \alignauthor (no curly braces needed) should
 % precede each author name, affiliation/snail-mail address and
 % e-mail address. Additionally, tag each line of
@@ -188,8 +182,6 @@ Neubauer et. al. in \cite{Neubauer12AutomatedContinuousQualityAssurance} use mac
 They use MBTC to check if later execution traces of the system still conform to the inferred model; if not, either the system has a bug or the system behaved correctly and the model must be updated.
 This work comes close to eXtreme Modelling, but an inferred specification is quite different from one written by humans; the purpose of the former is solely to detect behavior changes in the implementation, the latter expresses the designers' intent.
 
-% TODO: put this somewhere: Pressler \cite{Pressler18VerifyingSoftwareTracesTLAPlus} describes an MBTC approach specific to TLA+ and TLC.
-
 % TODO: Articles left to cite: \cite{Schultz19BugsLife, Schultz19TunableConsistency}
 
 \section{Problem Statement}
@@ -203,7 +195,9 @@ Solution and analysis for Max's work
 \section{Model-Based Trace-Checking}
 \label{sec:model_based_trace_checking}
 
-MongoDB database servers are typically deployed as a redundant group called a "replica set". The replica set's protocols for electing a leader and replicating data changes to followers are a modified version of the Raft protocol\cite{Ongaro14Raft}. Each replica stores a log of all operations (the "oplog"), a term counter that is incremented each election, and a timestamp representing the newest operation it knows has been committed by a majority of replicas (the "commit point"). We have written several TLA+ specifications of aspects of our protocol. Our goal was to test that a replica set's actual behavior conforms.
+MongoDB database servers are typically deployed as a redundant group called a "replica set", which uses protocols inspired by Raft\cite{Ongaro14Raft} to elect a leader and replicate data changes to followers. Each replica stores a log of all operations (the "oplog"), a term counter that is incremented each election, and a timestamp representing the newest operation it knows has been committed by a majority of replicas (the "commit point"). We have written several TLA+ specifications to describe aspects of our protocol. Our goal was to test that a replica set's actual behavior conforms.
+
+\subsection{Solution}
 
 % 392 jstests in replsets/
 % counting the following as "fuzz tests that exercise our replication protocol"
@@ -217,85 +211,179 @@ MongoDB database servers are typically deployed as a redundant group called a "r
 % jstestfuzz_replication_gen
 % jstestfuzz_replication_multiversion_gen
 % jstestfuzz_replication_initsync_gen
-Prior to our research, there were roughly 400 integration tests handwritten in Javascript that exercise our replication protocol, and 10 fuzz tests that pause, disconnect, and terminate servers at random while the replica set is performing regular operations. We wanted to run these tests with additional trace logging, then check if the traces conform to our specifications.
+Prior to our research, there were roughly 400 integration tests handwritten in Javascript that exercise our replication protocol, and 10 fuzz tests that pause, disconnect, and terminate servers at random while the replica set is performing regular operations. We wanted to run these tests with additional trace logging, then use MBTC to check if the traces conform to our specifications.
 
 % TODO: cite https://github.com/mongodb/mongo/blob/master/src/mongo/db/repl/tla_plus/RaftMongo/RaftMongo.tla
 % Some say we should connect github.com/mongodb/mongo to Zenodo to get a DOI number, but that requires Office IT perms
 % Uploading a repo snapshot to FigShare might be an easier way to get a DOI, or else just cite a URL with a commit hash
-We chose one of our specifications, a 345-line TLA+ file called `RaftMongo.tla`, which models the gossiping of the commit point among replicas. Each replica's state is modeled with four variables: its role (leader or follower), the newest election term and commit point it knows, and the contents of its oplog. There are seven named state transitions, representing a write operation, an election, the replication of an operation, the gossipping of the commit point between replicas, and so on. 
+For our prototype we chose one of our specifications, a 345-line TLA+ file called \texttt{RaftMongo.tla}, which models the gossiping of the commit point among replicas. Each replica's state is modeled with four variables:
+
+\begin{enumerate}
+\item its role (leader or follower)
+\item the newest election term it knows
+\item the newest commit point it knows
+\item the contents of its oplog
+\end{enumerate}
+
+There are seven named state transitions in the specification; they represent a write operation, an election, the replication of a data change, the gossipping of the commit point between replicas, and so on. 
 % TODO: maybe more detail, or a diagram about RaftMongo.tla
-We located code paths in MongoDB corresponding to these seven state transitions and added logging statements, enabled only in testing, which emit as JSON the values of the four variables modeled by our specification. 
+% Counting commit f515d2ad which adds 275 lines, and rounding up because there were later adjustments
+We located code paths in MongoDB corresponding to these seven state transitions and added logging statements, enabled only in testing, which emit as JSON the values of the four state variables above. The total code changes required approximately 300 lines of additional C++.
+
 MBTC with a distributed system requires a partial order of trace events; we achieved a strict order by running all processes on one machine and adding millisecond sleeps where necessary while the system is under test. (Jard et. al. describe a solution with vector clocks \cite{Jard94GeneralApproachToTraceChecking}.)
 
+% https://evergreen.mongodb.com/version/5e25ba97c9ec44650aa9944f
+% replica_sets suite:
+% https://evergreen.mongodb.com/task/mongodb_mongo_master_enterprise_rhel_62_64_bit_replica_sets_patch_fad0f06911036b04c5b40789d6ee5c58c4108f00_5e25ba97c9ec44650aa9944f_20_01_20_14_35_04
+% 352 passed, 62 failed (presumably because they used arbiters or otherwise incompatible with trace logging)
+% git clone https://github.com/will62794/faster-local-testing/
+% python getlogs.py USER APIKEY --task mongodb_mongo_master_enterprise_rhel_62_64_bit_replica_sets_patch_fad0f06911036b04c5b40789d6ee5c58c4108f00_5e25ba97c9ec44650aa9944f_20_01_20_14_35_04
+
+We enabled trace logging in Evergreen. This produced a total of TODO trace events in our handwritten Javascript tests on a particular run. We also selected one of our fuzz tests, called \texttt{rollback\_fuzzer}, for MBTC. This test randomly creates network partitions, causing replicas to temporarily diverge, then roll back writes in order to re-synchronize when the partitions are healed. A representative run of \texttt{rollback\_fuzzer} produced 2683 trace events.
+
+% How much TLA+ statement and space coverage did today's rollback_fuzzer suite hit?
+% from a given run of the suite, 1 JS file, 3 nodes, 2683 trace events
+% Follow instructions on https://github.com/tlaplus/tlaplus/issues/413
+
 % TODO: cite mongodb-labs/repl-trace-checker
-We wrote a 484-line Python script to post-process trace logs. The script merges the replicas' logs and sorts them by timestamp to obtain a sequence of trace events. These events describe individual replicas' states at the moment of each trace event, from which the script constructs a sequence of states for the entire replica set. The script begins with a known initial state, combines it with the first trace event to determine the next state, and so on.
+We wrote a 484-line Python script to post-process trace logs. The script merges the replicas' logs and sorts them by timestamp to obtain a sequence of trace events. Each event describes only one replica's state at the moment it executed a state transition, from which the script must construct a sequence of states for the entire replica set. The script begins with a known initial state, combines it with the first trace event to determine the next state, and so on. For example, in Figure \ref{figure:event-processing}, the replica set's current state has Server 1 as the leader in term 1. The script processes a log message from Server 2 announcing it has become leader in term 2, arriving at the next state.
 
-% test comment
+\begin{figure}
+\includegraphics[width=8cm]{event-processing.png}
+\caption{Trace Event Processing}
+\label{figure:event-processing}
+\end{figure}
 
-Merge and process logs, construct Trace.tla and Trace.cfg
-We considered either a Java harness that fed trace inputs to the TLC internal API, and we tried Pressler's method. Since the former was not fully implemented in Java for us, and the latter already works and includes nice Toolbox diagnostics, we stuck w/ the latter. We also considered Pressler's suggestion of using his method w/ a custom operator that avoids passing through TLA+ tuples as the repr of the trace, we didn't need to do that either.
+Once the script has constructed this sequence of states, it implements MBTC following a method proposed by Pressler\cite{Pressler18VerifyingSoftwareTracesTLAPlus}: it generates a TLA+ module called \texttt{Trace.tla} which includes the sequence of states (Figure \ref{fig:state-sequence}), and uses the TLC model-checker to check that the sequence is permitted by the \texttt{RaftMongo.tla} specification.
 
-Pressler's method
-pressler's method requires a property called "Safety" in the source spec, although we prefer to call it "SpecBehavior". The Safety property must be distinguished from the Liveness Property
+\begin{figure}
+\begin{verbatim}
+------- MODULE Trace ------------
+EXTENDS Integers, Sequences
 
-Determine success or failure
+\* Trace generated from replica set log files. Each
+\* tuple is role, term, state, commit point, oplog
+\* per server.
 
-Measure state space coverage and TLA+ statement coverage
-Outline how we would do that - challenge of merging coverage reports
+Trace == <<
+<<
+  <<"Leader", "Follower">>,
+  <<1, 1>>,
+  <<NULL, NULL>>,
+  << <<>>, <<>> >>
+>>,
+<<
+  <<"Follower", "Leader">>,
+  <<1, 2>>,
+  <<NULL, NULL>>,
+  << <<>>, <<>> >>
+>>
+>>
+\end{verbatim}
+\caption{State sequence as TLA+ tuple (simplified)}
+\label{fig:state-sequence}
+\end{figure}
 
-Debug failures with TLC output or exploration in TLA+ Toolbox GUI
+\subsection{Analysis}
 
-Quit before this: Apply to all our tests, deploy to Evergreen for the sake of CI and scaling
+% Probably irrelevant: We considered either a Java harness that fed trace inputs to the TLC internal API, and we tried Pressler's method. Since the former was not fully implemented in Java for us, and the latter already works and includes nice Toolbox diagnostics, we stuck w/ the latter. We also considered Pressler's suggestion of using his method w/ a custom operator that avoids passing through TLA+ tuples as the repr of the trace, we didn't need to do that either.
 
-Estimates of effort, lines of code, MBTC runtime, other statistics
+% Counting from Oct 10, 2019 https://github.com/mongodb-labs/repl-trace-checker/commit/5c96b44d to 
+% Jan 10+.
+We had intended to trace-check several specifications against traces from both handwritten and fuzz tests, deploy the trace-checker to our continuous integration system, and measure accumulated state space coverage over all tests. However, we applied trace-checking to only 5 handwritten tests and one fuzz test. Only one handwritten test generated traces that passed the trace-checker. We did not deploy to continuous integration nor measure coverage. The effort to implement MBTC proved so costly for us that we abandoned the project after two months of engineering effort. We faced discrepancies between our specifications and implementation, complexities with concurrency and locking, and incomplete support in TLC. In the following sections we describe these issues and propose future solutions.
 
-How much TLA+ statement and space coverage did today's rollback_fuzzer suite hit?
+\subsubsection{Implementation discrepancies}
 
-for each event, must log after event has changed process state, before the change is visible to any other process (or even thread in this process), very finicky
+% TODO: cite SERVER-17934
+
+Trace checking the output of \texttt{rollback\_fuzzer} immediately reproduced a known violation of the specification: our implementation permits a new follower to commit oplog entries before it is fully synced with the leader, but this behavior should not be permitted, and is not modeled in \texttt{RaftMongo.tla}. This was not a \textit{transcription bug}; when we wrote \texttt{RaftMongo.tla} we did not have MBTC in mind, so we deliberately wrote an idealized spec. We intend to gradually bring our implementation into conformity. When MBTC caught this violation it increased our confidence in trace-checking. However, we needed some way to make the implementation pass trace checking. Since the violation came only 4 steps from the trace's start, and the checker stopped at the first violation, the violation left the remainder of the 2683 steps unchecked. To pass trace-checking, we could 1) update the specification to match today's implementation, 2) fix the implementation sooner than planned, 3) post-process the trace log to simulate a conformant implementation, or 4) avoid triggering the non-conforming behavior in testing. For this particular issue we chose solution 4, and modified \texttt{rollback\_fuzzer} to ensure all followers were fully synced before the test began any writes. However, we realized that updating all our fuzz tests and handwritten tests to avoid non-conforming behavior would not be economical, and would remove useful test coverage.
+
+Other discrepancies required solution 1, updating the specification. For example, \texttt{RaftMongo.tla} modeled elections as an instantaneous change from one leader to another. This simplification was reasonable when the specification was first written, since the election protocol was not its original focus. But in fact elections comprise multiple events over time, and MBTC required us to make the specification more complex to account for this. Each discrepancy we discovered through MBTC required us to judge which of the four solutions was most cost-effective.
+
+Lesson: In order to use a formal specification with MBTC, the specification should be written with MBTC in mind. We had started with specifications written for the sake of documenting and model-checking a design. If we started over, we would match our specifications to the known flaws in the implementation, and faithfully model multi-step events with multiple TLA+ actions.
+
+\subsubsection{Hierarchical locking, visibility}
+
+% Logging and locking, inter- vs intra-process concurrency. specs like Raft model inter proc concurrency but not intra proc. That seems true of the literature in general: one or the other kind of concurrency not both. We've found it hard to do MBTC for Raft because we have to make one process appear single-threaded so we can snapshot its state in the trace log, this is very hard in a highly concurrent process. This may be true of nearly all distributed systems in production.
+
+% hierarchical locking is common to DBs (cite), but makes trace logging hard: at the layer being specified, must lock lower layers in order to get snapshot of system state for logging. this tends to contradict lock order rules. make a diagram!
+
+% for each event, must log after event has changed process state, before the change is visible to any other process (or even thread in this process). essentially must take all locks and latches and stop the entire process, but a system designed for fine-grained hierarchical locking resists such an approach.
+
+% oplog visibility - determining the moment in a process when its state can have an effect on other processes, better hope it's atomic or you must model both concurrencies in TLA+
+
+Formal specifications of distributed systems algorithms, such as Raft, model a concurrent system of interacting processes, but they typically model each process as single-threaded. Production database systems such as MongoDB, however, almost always have high intra-process concurrency and employ some degree of hierarchical locking\cite{Gray76SharedLocks}. It may not be feasible to log a consistent snapshot of such a process's state at the moment of a trace event.
+
+% _tlaPlusRaftMongoEvent_inlock's caller has replcoord mutex, the fn gets Global IS,
+% DB IS, and Collection IS locks for local.oplog.rs.
+% more details in https://mongodbcr.appspot.com/536420002/, particularly patch set 9
+% map locks A, B, C to RSTL, Global, replcoord mutex.
+
+For \texttt{RaftMongo.tla} specifically, a replica includes the contents of its oplog with each trace event. Acquiring the locks to obtain a snapshot of the oplog proved difficult. Suppose our \texttt{traceLogEvent} procedure (Figure \ref{fig:state-sequence}) must acquire locks A, B, and C, in that order, to read the oplog. Consider a procedure \texttt{becomeLeader} that acquires locks A and C, then changes the replica's role to Leader. If we add a call from \texttt{becomeLeader} to \texttt{traceLogEvent}, the latter must acquire lock B, but this is the wrong order and risks deadlocking with other threads.  General solutions are unpalatable: callers of \texttt{traceLogEvent} could be responsible for acquiring all the locks it will need, but this encodes intimate knowledge about \texttt{traceLogEvent} into its callers, and it significantly alters the system's behavior under test. Furthermore, MongoDB has no general Two-Phase Locking\cite{Eswaran76TwoPhaseLocking} framework, so such changes would be labor-intensive.
+
+\begin{figure}
+\begin{verbatim}
+PROCEDURE becomeLeader() {
+    acquire Lock A
+    acquire Lock C
+    role := Leader
+    logTraceEvent()
+}
+
+PROCEDURE traceLogEvent() {
+    /* Wrong acquisition order if called by
+       becomeLeader, risks deadlock */
+    acquire Lock A if not yet acquired
+    acquire Lock B if not yet acquired
+    acquire Lock C if not yet acquired
+    read oplog
+}
+\end{verbatim}
+\caption{Pseudocode for a replica becoming a Leader}
+\label{fig:state-sequence}
+\end{figure}
+
+A related challenge is to log each trace event after it has occurred, but \textit{before} the change is visible to other replicas. E.g., when a leader appends an oplog entry, it must log the trace event after the entry has appeared in its own oplog, but before it can be replicated by any followers. If a follower logged a "Replicate Entry" event with an earlier timestamp than the leader's "Write Entry" event, the trace would violate the specification. We had to consider carefully when to log each trace event to achieve this fine timing.
+
+Solving the two challenges above, for each of the seven named state transitions in \texttt{RaftMongo.tla}, was the single most difficult aspect of our MBTC implementation, costing more than a month of engineering effort. We discovered code locations that obeyed our visibility requirements, and managed to avoid the need for acquiring locks out of order by exploiting MongoDB's MVCC features instead. We expect any MBTC implementation for a concurrent database will encounter similar complexities with hierarchical locking and visibility of state changes.
+
+If we began again, we would rewrite our specification to model events, such as protocol messages, that are easily observed in the implementation. We would avoid modeling state that is difficult to snapshot, especially if it is protected with complex locking. If some state in the model cannot be logged by the implementation, Pressler proposes a "refinement mapping" technique\cite{Pressler18VerifyingSoftwareTracesTLAPlus} that is worth further investigation.
+
+\subsubsection{TLA+ and TLC}
+
+% TODO: cite https://github.com/tlaplus/tlaplus/issues/413
+Tool support for MBTC with TLA+ and TLC is a work in progress. Pressler's method works well to check traces of hundreds of events, but for thousands of events it is impractically slow. Pressler proposed, and Markus Kuppe has begun to implement, features to check long traces by bypassing the TLA+ parser in favor of a special-purpose Java extension to TLC. MBTC with TLA+ will be more convenient once these features are finalized and released, with several examples. Another missing feature is the ability to combine state-space coverage reports over multiple TLC executions, which would permit engineers to calculate the total coverage achieved by deploying MBTC to continuous integration.
+
+% Debug failures with TLC output or exploration in TLA+ Toolbox GUI
+
+% Estimates of effort, lines of code, MBTC runtime, other statistics
 
 
-Trace checking immediately reproduced a known spec violation, initial syncing nodes form a quorum for w: majority writes. we worked around this by waiting for initial sync to complete in our tests before writing. this was not a "transcription error"
-shows the method works
-note that the fix is scheduled
-raises a question about what to do w/ known bugs: avoid them in testing? model them? fix them right away?
+% It's nice to have spec and impl in one repo, and to add spec-specific tracing in the same commits as the spec & impl
 
-It's nice to have spec and impl in one repo, and to add spec-specific tracing in the same commits as the spec & impl
 
-Note that we've had to bring spec and implementation's trace logging closer by a series of judgment calls. e.g. we have many more states than raft's "leader" & "follower", so we abstract those away while logging. OTOH raft's first term is 0 and ours is -1, so we added -1 to the model instead. In Raft, members do one write at a time, and append one log entry; we do bulk writes and batch oplog application, so we updated our spec to match that. There was an interesting moment when we reinterpreted the ClientWrite event as "entry became visible on primary" - we don't need to model concurrency on primary, but in the system as a whole. implementation complies w/ spec once we reinterpret the meaning of the spec. how do we decide where to fix discrepancies - C++, Python, or TLA+? the Python should be as dumb as possible but sometimes it had to be smart
+% what does MBTC prove?
+% Advantage of MBTC over other tests is that implementation tests can't prove liveness, unless you run them forever. TLA+ specs can be checked for liveness, and if the impl matches the spec, the impl might also not have liveness bugs.
 
-TODO: run a full RHEL62 suite w/ trace logging, measure total number of state transitions logged (will has a script for something similar already)
+% impl is a subset of the spec => if the spec is safe, the impl is safe
+% but we can't test to the point where we know that impl is a subset of the spec
+% we only know that tested behavior is a subset of the spec
 
-what does MBTC prove?
-Advantage of MBTC over other tests is that implementation tests can't prove liveness, unless you run them forever. TLA+ specs can be checked for liveness, and if the impl matches the spec, the impl might also not have liveness bugs.
+% FALSE: impl is a subset of the spec => if the spec has no liveness bugs, the impl has no liveness bugs
+% the impl might lack spec behaviors that are required for liveness
 
-impl is a subset of the spec => if the spec is safe, the impl is safe
-but we can't test to the point where we know that impl is a subset of the spec
-we only know that tested behavior is a subset of the spec
+% use "refinement" jargon!
 
-FALSE: impl is a subset of the spec => if the spec has no liveness bugs, the impl has no liveness bugs
-the impl might lack spec behaviors that are required for liveness
+% Reconstruction of truncated oplogs
 
-use "refinement" jargon!
+% Python performance was a bit challenging
 
-Difficulty of development
-Logging and locking, inter- vs intra-process concurrency. specs like Raft model inter proc concurrency but not intra proc. That seems true of the literature in general: one or the other kind of concurrency not both. We've found it hard to do MBTC for Raft because we have to make one process appear single-threaded so we can snapshot its state in the trace log, this is very hard in a highly concurrent process. This may be true of nearly all distributed systems in production.
+% Choices about when to fix conformance in spec, MongoDB, or Python script
 
-hierarchical locking is common to DBs (cite), but makes trace logging hard: at the layer being specified, must lock lower layers in order to get snapshot of system state for logging. this tends to contradict lock order rules. make a diagram!
+% Fixing spec can make it more complex and take longer to model-check and to read
+% Might make some configs intractable to model-check that would've been tractable while the spec was more abstract
 
-for each event, must log after event has changed process state, before the change is visible to any other process (or even thread in this process). essentially must take all locks and latches and stop the entire process, but a system designed for fine-grained hierarchical locking resists such an approach.
-
-oplog visibility - determining the moment in a process when its state can have an effect on other processes, better hope it's atomic or you must model both concurrencies in TLA+
-
-Reconstruction of truncated oplogs
-
-Python performance was a bit challenging
-
-Choices about when to fix conformance in spec, MongoDB, or Python script
-
-Fixing spec can make it more complex and take longer to model-check and to read
-Might make some configs intractable to model-check that would've been tractable while the spec was more abstract
-
-the MBTC paper made it sound like adding trace logging was easy: they use AspectJ and other Java-specific tech to add fairly non-intrusive logging, with introspection to avoid writing a ton of code, and they don't discuss concurrency problems with getting a point-in-time snapshot of a single process's state. In our highly concurrent C++ application, which is very large and old and not written with MBTC in mind, we found trace logging to be the hardest(?) part to implement
+% the MBTC paper made it sound like adding trace logging was easy: they use AspectJ and other Java-specific tech to add fairly non-intrusive logging, with introspection to avoid writing a ton of code, and they don't discuss concurrency problems with getting a point-in-time snapshot of a single process's state. In our highly concurrent C++ application, which is very large and old and not written with MBTC in mind, we found trace logging to be the hardest(?) part to implement
 
 \section{Conclusions}
 \label{sec:conclusions}
@@ -321,10 +409,5 @@ And future work.
 %  and remember to run:
 % latex bibtex latex latex
 % to resolve all references
-
-\subsection{References}
-Generated by bibtex from your ~.bib file.  Run latex,
-then bibtex, then latex twice (to resolve references).
-
 \end{document}
 \balance
