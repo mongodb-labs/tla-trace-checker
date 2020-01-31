@@ -1,7 +1,6 @@
 \* These citations are from https://liinwww.ira.uka.de/bibliography/index.html, lightly edited
 \* The reference ids like "Bochman89TraceAnalysis" are intended to be mnemonic
 \* TODO: fix all warnings and check all data
-\* TODO: prevent titles from being downcased
 
 @Article{MBTC,
   title =	"Model-Based Trace-Checking",
@@ -13,6 +12,15 @@
   bibsource =	"DBLP,
 		 http://dblp.uni-trier.de/db/journals/corr/corr1111.html#abs-1111-2825",
   URL =  	"http://arxiv.org/abs/1111.2825",
+}
+
+@book{Lamport02SpecifyingSystems,
+author = {Lamport, Leslie},
+title = {Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers},
+year = {2002},
+isbn = {032114306X},
+publisher = {Addison-Wesley Longman Publishing Co., Inc.},
+address = {USA}
 }
 
 @Article{Jard83AnApproachToTestingSpecifications,
@@ -28,6 +36,16 @@
 		 DBLP,
 		 http://dblp.uni-trier.de/db/journals/jss/jss3.html#JardB83",
   pages =	"315--323",
+}
+
+@misc{Stigsen19RealmPatent,
+author ={Alexander Stigsen},
+year ={2019},
+title ={Conflict Resolution in Distributed Computing},
+note ={Patent No. US20190354540A1, Filed May 14th., 2019, Issued Nov. 21st., 2019},
+url ={},
+month ={Nov},
+lastaccessed = {},
 }
 
 @Article{Bochman89TraceAnalysis,
@@ -244,6 +262,57 @@ isbn="978-3-319-96145-3"
   pages =	"356--361",
 }
 
+ @inproceedings{Tyulenev19CausalConsistencyMongoDB,
+     author = {Tyulenev, Misha and Schwerin, Andy and Kamsky, Asya and Tan, Randolph and Cabral, Alyson and Mulrow, Jack},
+     title = {Implementation of Cluster-Wide Logical Clock and Causal Consistency in MongoDB},
+     year = {2019},
+     isbn = {9781450356435},
+     publisher = {Association for Computing Machinery},
+     address = {New York, NY, USA},
+     url = {https://doi.org/10.1145/3299869.3314049},
+     doi = {10.1145/3299869.3314049},
+     booktitle = {Proceedings of the 2019 International Conference on Management of Data},
+     pages = {636–650},
+     numpages = {15},
+     keywords = {causal consistency, eventual consistency},
+     location = {Amsterdam, Netherlands},
+     series = {SIGMOD ’19}
+}
+
+ @article{Kamsky19TPCCMongoDB,
+     author = {Kamsky, Asya},
+     title = {Adapting TPC-C Benchmark to Measure Performance of Multi-Document Transactions in MongoDB},
+     year = {2019},
+     issue_date = {August 2019},
+     publisher = {VLDB Endowment},
+     volume = {12},
+     number = {12},
+     issn = {2150-8097},
+     url = {https://doi.org/10.14778/3352063.3352140},
+     doi = {10.14778/3352063.3352140},
+     journal = {Proc. VLDB Endow.},
+     month = aug,
+     pages = {2254–2262},
+     numpages = {9}
+}
+
+@article{Guo17MongoDBFuzzTester,
+author = {Guo, Robert},
+year = {2017},
+month = {04},
+pages = {43-47},
+title = {MongoDB's JavaScript fuzzer},
+volume = {60},
+journal = {Communications of the ACM},
+doi = {10.1145/3052937}
+}
+
+@article{Daly19iChangePointMongoDB,
+  title={Industry Paper: The Use of Change Point Detection to Identify Software Performance Regressions in a Continuous Integration System},
+  author={Daly, David and Brown, William and Ingo, Henrik and O’Leary, Jim and Bradford, David},
+  year={2019}
+}
+
 @article{Schultz19TunableConsistency,
  author = {Schultz, William and Avitabile, Tess and Cabral, Alyson},
  title = {Tunable Consistency in MongoDB},
@@ -277,7 +346,7 @@ isbn="978-3-319-96145-3"
 		 the Critical Path in System Design",
   journal =	"Lecture Notes in Computer Science",
   volume =	"939",
-  pages =	"367--??",
+  pages =	"367--380",
   year = 	"1995",
   CODEN =	"LNCSD9",
   ISSN = 	"0302-9743",
@@ -426,74 +495,146 @@ isbn="978-3-642-02658-4"
   year = 	"1976",
 }
 
-@Article{Eswaran76TwoPhaseLocking,
-  author =	"K. P. Eswaran and J. N. Gray and R. A. Lorie and I. L.
-		 Traiger",
-  title =	"The Notions of Consistency and Predicate Locks in a
-		 Database System",
-  journal =	"Communications of the ACM",
-  volume =	"19",
-  number =	"11",
-  pages =	"624--633",
-  month =	nov,
-  year = 	"1976",
-  refs = 	"8",
-  checked =	"19940628",
-  source =	"Dept. Library",
-  keywords =	"consistency, lock, database, concurrency,
-		 transaction",
-  abstract =	"In database systems, users access shared data under
-		 the assumption that the data satisfies certain
-		 consistency constraints. This paper defines the
-		 concepts of transaction, consistency and schedule and
-		 shows that consistency requires that a transaction
-		 cannot request new locks after releasing a lock. Then
-		 it is argued that a transaction needs to lock a logical
-		 rather than a physical subset of the database. These
-		 subsets may be specified by predicates. An
-		 implementation of predicate locks which satisfies the
-		 consistency condition is suggested.",
+% @Article{Eswaran76TwoPhaseLocking,
+%   author =	"K. P. Eswaran and J. N. Gray and R. A. Lorie and I. L.
+% 		 Traiger",
+%   title =	"The Notions of Consistency and Predicate Locks in a
+% 		 Database System",
+%   journal =	"Communications of the ACM",
+%   volume =	"19",
+%   number =	"11",
+%   pages =	"624--633",
+%   month =	nov,
+%   year = 	"1976",
+%   refs = 	"8",
+%   checked =	"19940628",
+%   source =	"Dept. Library",
+%   keywords =	"consistency, lock, database, concurrency,
+% 		 transaction",
+%   abstract =	"In database systems, users access shared data under
+% 		 the assumption that the data satisfies certain
+% 		 consistency constraints. This paper defines the
+% 		 concepts of transaction, consistency and schedule and
+% 		 shows that consistency requires that a transaction
+% 		 cannot request new locks after releasing a lock. Then
+% 		 it is argued that a transaction needs to lock a logical
+% 		 rather than a physical subset of the database. These
+% 		 subsets may be specified by predicates. An
+% 		 implementation of predicate locks which satisfies the
+% 		 consistency condition is suggested.",
+% }
+
+@InProceedings{Lamport99TLAPlus,
+  author =	"L. Lamport",
+  booktitle =	"Calculational System Design",
+  year = 	"1999",
+  editors =	"M. Broy and R. Steinbr{\"u}ggen",
+  title =	"Specifying Concurrent Systems with {TLA+}",
+  publisher =	"IOS Press",
+  address =	"Amsterdam",
+}
+
+@InProceedings{Chudnov18ContinuousFormalVerification,
+  title =	"Continuous Formal Verification of Amazon s2n",
+  author =	"Andrey Chudnov and Nathan Collins and Byron Cook and
+		 Joey Dodds and Brian Huffman and Colm MacC{\'a}rthaigh
+		 and Stephen Magill and Eric Mertens and Eric Mullen and
+		 Serdar Tasiran and Aaron Tomb and Eddy Westbrook",
+  bibdate =	"2018-10-03",
+  bibsource =	"DBLP,
+		 http://dblp.uni-trier.de/https://doi.org/10.1007/978-3-319-96142-2_26;
+		 DBLP,
+		 http://dblp.uni-trier.de/db/conf/cav/cav2018-2.html#ChudnovCCDHMMMM18",
+  booktitle =	"Computer Aided Verification - 30th International
+		 Conference, CAV 2018, Held as Part of the Federated
+		 Logic Conference, FloC 2018, Oxford, UK, July 14-17,
+		 2018, Proceedings, Part II",
+  publisher =	"Springer",
+  year = 	"2018",
+  volume =	"10982",
+  booktitle =	"CAV (2)",
+  editor =	"Hana Chockler and Georg Weissenbacher",
+  ISBN = 	"978-3-319-96141-5; 978-3-319-96142-2",
+  pages =	"430--446",
+  series =	"Lecture Notes in Computer Science",
 }
 
 \* Improvised citations for non-articles
 
-@Article{Wayne18AgileFormalMethods,
+@online{Wayne18AgileFormalMethods,
   title =	"Augmenting Agile with Formal Methods",
   author =	"Hillel Wayne",
   year = 	"2018",
   bibdate =	"2018-06-30",
-  URL =  	"https://www.hillelwayne.com/post/augmenting-agile/",
+  howpublished = {\url{https://www.hillelwayne.com/post/augmenting-agile/}}
 }
 
-@Article{Schultz19BugsLife,
+@online{Schultz19BugsLife,
   title =	"A Bug’s Life: Fixing a MongoDB Replication Protocol Bug with TLA+",
   author =	"William Schultz and Siyuan Zhou",
   year = 	"2019",
   bibdate =	"2019-09-12",
-  URL =  	"https://conf.tlapl.us/07_-_TLAConf19_-_William_Schultz_-_Fixing_a_MongoDB_Replication_Protocol_Bug_with_TLA.pdf",
+  howpublished = {\url{https://conf.tlapl.us/}}
 }
 
-@Article{Pressler18VerifyingSoftwareTracesTLAPlus,
+@online{Pressler18VerifyingSoftwareTracesTLAPlus,
   title =	"Verifying Software Traces Against a Formal Specification with TLA+ and TLC",
   author =	"Ron Pressler",
   year = 	"2018",
   bibdate =	"2018-12-13",
-  URL =  	"https://pron.github.io/files/Trace.pdf",
+  howpublished = {\url{https://pron.github.io/files/Trace.pdf}},
 }
 
-@Article{CheckImplFile.java,
-  title =	"CheckImplFile.java",
-  author =	"TODO",
-  year = 	"TODO",
-  bibdate =	"TODO",
-  URL =  	"https://github.com/tlaplus/tlaplus/blob/8e87c245dc86f1a48c4ed253dfa46afaf55d5086/tlatools/src/tlc2/tool/CheckImplFile.java",
+@online{Ongaro14TLA+Raft,
+  title =	"TLA+ specification for the Raft consensus algorithm",
+  author =	"Diego Ongaro",
+  year = 	"2014",
+  bibdate =	"2014-12-02",
+  howpublished = {\url{https://github.com/ongardie/raft.tla}},
 }
 
-@Article{Shukla18AzureCosmosDB,
+@online{Shukla18AzureCosmosDB,
   title =	"Azure Cosmos DB: Pushing the frontier of globally distributed databases",
   author =	"Dharma Shukla",
   year = 	"2018",
   bibdate =	"2018-09-24",
-  URL =  	"https://azure.microsoft.com/en-us/blog/azure-cosmos-db-pushing-the-frontier-of-globally-distributed-databases/",
+ howpublished = {\url{https://azure.microsoft.com/en-us/blog/azure-cosmos-db-pushing-the-frontier-of-globally-distributed-databases/}},
 }
 
+@misc{DBEnginesDBs,
+  key  = {DB-Engines Ranking},
+  title  = {{DB-Engines Ranking}},
+  howpublished = {\url{https://db-engines.com/en/ranking}},
+  note    = {Accessed: January 2020}
+}
+
+@misc{DBEnginesDocumentDBs,
+  key  = {DB-Engines Ranking of Document Stores},
+  title  = {{DB-Engines Ranking of Document Stores}},
+  howpublished = {\url{https://db-engines.com/en/ranking/document+store}},
+  note    = {Accessed: January 2020}
+}
+
+@misc{TLAPlusGitHub,
+  key  = {TLC and TLA+ Toolbox},
+  title  = {{TLC and TLA+ Toolbox}},
+  howpublished = {\url{https://github.com/tlaplus/tlaplus}}
+}
+
+@misc{MongoGitHub,
+  key  = {MongoDB},
+  title  = {{MongoDB}},
+  howpublished = {\url{https://github.com/mongodb/mongo}}
+}
+
+@misc{ReplTraceChecker,
+  key  = {repl-trace-checker},
+  title  = {{repl-trace-checker}},
+  howpublished = {\url{https://github.com/mongodb-labs/repl-trace-checker}}
+}
+
+@misc{SERVER-17934,
+  key  = {SERVER-17934},
+  title  = {{SERVER-17934}},
+  howpublished = {\url{https://jira.mongodb.org/browse/SERVER-17934}}
+}

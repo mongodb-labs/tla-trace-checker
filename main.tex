@@ -4,14 +4,20 @@
 % Removed the requirement to include *bbl file in here. (AhmetSacan, Sep2012)
 % Fixed the equation on page 3 to prevent line overflow. (AhmetSacan, Sep2012)
 
+
 \documentclass{vldb}
 \usepackage{graphicx}
 \usepackage{pgfplots}
 \usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
+\usepackage{array}
+
+% smart quotes
+\usepackage [autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
 
 % Include information below and uncomment for camera ready
 \vldbTitle{TLA+ Trace Checking In Production}
-\vldbAuthors{A. Jesse Jiryu Davis, Judah Schvimer}
+\vldbAuthors{A. Jesse Jiryu Davis, Judah Schvimer, Max Hirschhorn}
 \vldbDOI{https://doi.org/10.14778/xxxxxxx.xxxxxxx}
 \vldbVolume{12}
 \vldbNumber{xxx}
@@ -22,6 +28,7 @@
 % ****************** TITLE ****************************************
 
 \title{TLA+ Trace Checking In Production}
+% OUTLINE: https://docs.google.com/document/d/16qDw3hxpi64ASPm0j0HneQSjyY7Kf93tCCLzG1NdOFM/edit
 
 % possible, but not really needed or used for PVLDB:
 %\subtitle{[Extended Abstract]
@@ -53,7 +60,7 @@
 % without further effort on your part as the last section in
 % the body of your article BEFORE References or any Appendices.
 
-\numberofauthors{2} %  
+\numberofauthors{3} %  
 \author{
 % The command \alignauthor (no curly braces needed) should
 % precede each author name, affiliation/snail-mail address and
@@ -76,6 +83,12 @@ Judah Schvimer\\
        \affaddr{1633 Broadway}\\
        \affaddr{New York, NY 10019}\\
        \email{judah@mongodb.com}
+\alignauthor
+Max Hirschhorn\\
+       \affaddr{MongoDB, Inc.}\\
+       \affaddr{1633 Broadway}\\
+       \affaddr{New York, NY 10019}\\
+       \email{max.hirschhorn@mongodb.com}
 }
 % There's nothing stopping you putting the seventh, eighth, etc.
 % author on the opening page (as the 'third row') but we ask,
@@ -89,164 +102,251 @@ Judah Schvimer\\
 
 \maketitle
 
+% ********************************************************************
+% ****************** Abstract ****************************************
+% ********************************************************************
 \begin{abstract}
 We have multiple TLA+ specs to model various aspects of MongoDB. We use model-based trace-checking to test that real MongoDB replica sets' behaviors conform to these specs.
 We apply the trace-checking technique to execution traces from fuzz tests, and deploy this system to our continuous integration infrastructure.
 These tests continuously check for implementation behaviors that diverge from our specifications.
 They allow us to simultaneously develop the implementation and specifications while staying reasonably confident that they conform.
-Developing several specs and the implementation while maintaining a trace-checker is a challenge that the formal specification literature mostly omits, we describe some best practices.
+Developing several specs and the implementation while maintaining a trace-checker is a challenge that the formal modelling literature mostly omits, we describe some best practices.
 \end{abstract}
 
+% ********************************************************************
+% ****************** Introduction ************************************
+% ********************************************************************
 \section{Introduction}
+\label{sec:introduction}
+It is well established that formal modelling catches bugs, aids software design, and improves code quality \cite{Newcombe2014UseOfFormalMethodsAmazon}. 
+Formal methods are now being used to gain confidence in mission-critical, highly complex systems in multiple domains across many companies. 
+Amazon \cite{Newcombe2014UseOfFormalMethodsAmazon, Chudnov18AmazonS2N, Cook18SecurityAWS}, Intel \cite{Kaivola09IntelI7, Beers08IntelExperience}, Microsoft \cite{Shukla18AzureCosmosDB}, and Springer \cite{Neubauer12AutomatedContinuousQualityAssurance}, have all written about their uses of formal methods and the value they've gained from modelling and verifying industrial software. 
+But software engineers in industry are often skeptical of the value of the model unless it can be shown to match the implementation \cite{Wayne18AgileFormalMethods, Newcombe2014UseOfFormalMethodsAmazon}, due to the risk of \textit{transcription bugs}.
+Further, it can be difficult to ensure that in a large engineering organization, changes in the production code are accompanied by changes in the model of the code.
+"eXtreme Modelling", in which "model and implementation are developed in parallel" \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}, has been proposed as a solution to spec and implementation divergence.
 
-Formal modelling catches bugs \cite{Newcombe2014UseOfFormalMethodsAmazon}, but software engineers in industry are often skeptical of the value of the specification unless it can be shown to match the implementation \cite{Wayne18AgileFormalMethods, Newcombe2014UseOfFormalMethodsAmazon}, due to the risk of \textit{transcription bugs}. 
-Further, it can be difficult to ensure that in a large engineering organization, changes in the production code are accompanied by changes in the specification of the code.
-Nevertheless, formal methods are now being used to gain confidence in mission-critical, highly complex systems in multiple domains across many companies \cite{Tasiran03AlphaMicroprocessor}. 
-Amazon \cite{Newcombe2014UseOfFormalMethodsAmazon, Chudnov18AmazonS2N, Cook18SecurityAWS}, Intel \cite{Kaivola09IntelI7, Beers08IntelExperience}, Microsoft \cite{Shukla18AzureCosmosDB}, and Springer \cite{Neubauer12AutomatedContinuousQualityAssurance}, have all written about their uses of formal methods and the value they've gained from using them to verify industrial software. 
-Formal methods give confidence by covering every possible behavior within a given specification \cite{Kaivola09IntelI7}. 
-They can expedite design of new features and confirm that a given solution fixes a bug. 
-Specifications can allow engineers to make riskier change with less fear of dangerous bugs and can make a system more understandable by distilling away unnecessary complexity  \cite{Newcombe2014UseOfFormalMethodsAmazon}.
-
-MongoDB has now used formal methods, specifically TLA+, for multiple projects on multiple teams. 
-TLA+ has helped reproduce bugs found in tests and validate fixes for those bugs. 
-MongoDB's replication protocol has especially gained from TLA+, verifying liveness properties of the database. 
-It is impossible for a finite test to give confidence that a behavior will eventually, or never, happen. TLA+ has filled this gap, verifying protocols as safe that proved difficult to fix after numerous attempts \cite{Schultz19BugsLife}. 
-Since this experience we have designed full features with their safety arguments grounded in TLA+ specs. 
-
-We attempted to use model-based trace-checking (MBTC) \cite{MBTC} to gain confidence that our multiple TLA+ specifications match the C++ implementation of our distributed database, MongoDB.
-Our proposed testing method would apply MBTC to execution traces obtained from our existing tests, and we would deploy our testing system to a cluster of continuous integration servers.
-This would permit us to rapidly develop both the specifications and the implementation, while receiving quick feedback about divergences between the two \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}.
-
-We believe there are \textit{four requirements} for demonstrating "MBTC in production":
+eXtreme Modelling caught our eye and we made two different attempts to put its findings into production.
+eXtreme Modelling proposes the following guidelines for ensuring spec and implementation conformance:
 \begin{enumerate}
-\item the implementation is a complex commercial software system
-\item multiple specifications model aspects of the same system
-\item the specifications and implementation co-evolve
-\item the implementation's conformance to its specifications is continuously tested
+  \item Model is written immediately prior to implementation
+  \item Model checkers verify the model meets certain properties
+  \item Multiple models are produced for different aspects of the system
+  \item Models generate tests, add assertions in code, and model checkers verify that test traces are legal in the model
+  \item Models evolve with the implementation
+  \item Continuous integration verifies the model and its conformance to the implementation with every code change
 \end{enumerate}
 
-% TODO: some argument here or in another section about why these are required
+We undertook two case studies, using two existing code bases.
+Although this technique was not intended for existing code bases and models, we attempted to lay the groundwork to use this technique on future projects in which we would write the model before the implementation, and future code changes could affect the code's conformance with its model.
 
-We attempted to meet these four requirements, but hit multiple obstacles and ultimately found our direction impractical and we chose to abort our attempt.
-In this paper we propose a vision for future research to make MBTC in production practical for systems like MongoDB.
+\subsection{Case Study: MongoDB database server}
 
-This paper will provide a background to this research in Section \ref{sec:background}. Section \ref{sec:related_work} will review related work. Section \ref{sec:problem_statement} will identify the problem this work, and the future work it envisions, attempts to solve. Section \ref{sec:solution} describes the solution we attempted. Section \ref{sec:analysis} analyzes the challenges met in implementing the solution. Finally, Section \ref{sec:conclusions} details where this work left off and avenues for future work to make this approach more feasible in the future.
+The MongoDB engineering team has used TLA+ to model several aspects of the MongoDB database server prior to this paper's research.
+The replication protocol benefited especially from TLA+.
+TLA+ has helped us design a complex, novel reconfiguration protocol, reproduce and fix multiple bugs, and verify liveness properties of the database. 
+It is impossible for a finite test to give confidence that a behavior will eventually, or never, happen. 
+TLA+ has filled this gap, permitting us to fix safety errors in our protocols, and verify those fixes, after numerous failed attempts \cite{Schultz19BugsLife}. 
 
+We attempted to use model-based trace-checking (MBTC) \cite{MBTC} to gain confidence that multiple TLA+ models match the C++ implementation of MongoDB's replication system.
+Our proposed testing method would apply MBTC to execution traces obtained from our existing tests, and we would deploy our testing system to a cluster of continuous integration servers.
+This would permit us to rapidly develop both the models and the implementation, while receiving quick feedback about divergences between the two \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}.
+Unfortunately, we were unsuccessful in implementing trace checking for the MongoDB replication protocol. This paper will explore the difficulties that made trace checking impractical, and propose avenues for future research to make this technique practical.
+
+\subsection{Case Study: Realm mobile sync}
+
+MongoDB Realm's mobile sync solution would not have been possible without formal methods. 
+Mobile sync requires an active-active replication protocol, and conflicts are resolved using Operational Transformation \cite{Stigsen19RealmPatent}.
+The semantics of Operational Transformation are complex, and modelling them in TLA+ helped to both document and understand the desired decision tree.
+Realm's mobile sync architecture requires implementing the Operational Transformation protocol in both C++ and Go; the mobile database is written in C++ and the cloud sync server is written in Go.
+It is paramount that these two implementations resolve conflicts identically.
+We improved our confidence that they do so by testing that they both conform to the model.
+
+For this case study, we attempted a different technique: model based testing (MBT) \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}.
+We created unittests for every state possible in the Operational Transformation spec and ensured that both the C++ and Go implementations passed the unittests.
+These unittests can be automatically generated and tested on any change to the model, and ensure that both implementations make appropriate changes to maintain equivalence. 
+
+This paper will show what factors made MBT successful and MBTC unsuccessful, and attempt to answer the questions, "When should I attempt MBTC?" and "When should I attempt MBT?".
+
+This paper provides background to this research in Section \ref{sec:background}. 
+Section \ref{sec:related_work} reviews related work. 
+Section \ref{sec:model_based_trace_checking} describes our attempt at MBTC, and the challenges met. 
+\ref{sec:model_based_testing} describes our success with MBT. 
+Finally, Section \ref{sec:conclusions} details where MBTC left off and avenues for future work to make this approach more feasible in the future, and attempts to distill why MBT worked for its case study while MBTC did not.
+
+% ********************************************************************
+% ****************** Background **************************************
+% ********************************************************************
 \section{Background}
 \label{sec:background}
+MongoDB is a distributed document database with features that are traditionally found both in NoSQL and Relational DBMSes.
+It has support for flexible unstructured schemas, as well as ACID compliant transactions and secondary indexes \cite{Kamsky19TPCCMongoDB}.
+MongoDB database servers are typically deployed as a redundant group called a "replica set", which uses protocols inspired by Raft \cite{Ongaro14Raft} to elect a leader node and replicate data changes to follower nodes.
+Reads and writes offer multiple consistency and durability levels with increasingly strong guarantees \cite{Schultz19TunableConsistency, Tyulenev19CausalConsistencyMongoDB}.
 
+MongoDB is an open source database with 50,000 commits, and 395 historical contributors. 
+Today there are approximately 70 engineers committing code to MongoDB on a daily basis, with 14 engineers devoted to MongoDB's replication protocol alone.
+MongoDB began development 12 years ago and has become the most popular document database \cite{DBEnginesDocumentDBs}, and one of the most popular of all databases \cite{DBEnginesDBs}.
 
+\subsection{Existing tests}
+\label{subsec:background_existing_tests}
+
+To ensure we provide advertised consistency guarantees with good performance, we run thousands of correctness and performance tests in Evergreen, our homegrown continuous integration (CI) system \cite{Daly19iChangePointMongoDB}.
+Every commit undergoes, on average, 380 hours of (highly parallel) testing.
+Tests are run against every architecture MongoDB supports, and every cluster topology with every configuration option that could reasonably have distinct behavior.
+Integration tests are written in Javascript and C++, and unittests are written in C++.
+Integration tests are categorized as targeted tests, passthrough tests, concurrency tests, and fuzz tests.
+Targeted tests reproduce specific behaviors that are both concerning and impractical to write as unittests.
+Passthrough tests take targeted tests that are applicable on multiple topologies and run them against all valid topologies.
+Concurrency tests run multiple threads through many iterations of a randomized finite state machine which generates database operations and data assertions.
+Fuzz tests use either the concurrent or the passthrough styles, and either run randomly generated commands against different topologies \cite{Guo17MongoDBFuzzTester}, or run targeted tests with random topology changes in the background, or both.
+Some fuzzers are specifically geared towards testing topology changes like replication rollback and initial sync, and interweave carefully orchestrated topology changes with random commands to test interactions.
+
+\subsection{TLA+ and TLC}
+\label{subsec:background_tla_tlc}
+
+MongoDB's correctness tests cannot cover the entire state space of its replication protocols.
+It would be impossible to imagine and write a test for every scenario.
+To gain the benefits of formal methods, engineers on MongoDB's Replication Team wrote models to verify several concurrent and distributed protocols in the database \cite{Schultz19BugsLife}.
+The formal modelling language we chose, TLA+, was introduced by Leslie Lamport in 1999 \cite{Lamport99TLAPlus, Lamport02SpecifyingSystems}.
+A TLA+ model defines a set of variables expressing a system's state, and the actions which may modify this state.
+The model may include simple invariants that must hold at each moment, as well as \textit{temporal logic} formulas to express properties of the system's execution over time.
+TLA+ is a precise mathematical notation; thus the properties of a TLA+ model can be proven correct, or validated by a finite model-checker which exhaustively evaluates its behaviors.
+The standard model-checker for TLA+, TLC, is actively developed on GitHub \cite{TLAPlusGitHub}.
+MongoDB chose TLA+ due to its success in industry and academic distributed systems research, open source implementation, and rich tooling.
+
+Prior to this work, we had TLA+ models for MongoDB's replication protocol, its initial sync protocol, and its lock manager.
+Concurrently with this work, other engineers wrote models for a new replica set reconfiguration protocol and a proposed but rejected reconfiguration protocol.
+In concert with this work, we created the Realm Operational Transformation model.
+And multiple models for known future features and existing complex distributed protocols are currently planned for future development.
+Models are written to gain confidence in critical aspects of our system, and then code reviewed and committed to the same repository as our tests and code using the same process as we use for our tests and code.
+Engineering work is scheduled to continuously verify our models alongside our correctness tests, to ensure that any changes to our models are correctly verified, and to document what model configuration was used to verify them.
+
+\subsection{MBTC and MBT}
+\label{subsec:background_mbtc_mbt}
+
+The "eXtreme Modelling" approach includes two testing methods that are promising for MongoDB: model-based trace-checking (MBTC) \cite{Jard83AnApproachToTestingSpecifications, MBTC} and model-based testing (MBT) \cite{Utting06PracticalModelBasedTesting}. 
+In the former, the implementation under test (IUT) is exercised with a test or by observing its behavior in production.
+The IUT produces an execution trace that captures its sequence of state changes.
+This execution trace is checked against the model, either while the IUT is running or post-hoc, to verify that the trace is a permitted behavior of the model.
+The greater the variety of observed behaviors, the more confidence one has in the implementation's conformance.
+
+In MBT, the model is used to generate test inputs and expected outputs, either exhaustively or a carefully selected subset \cite{Dick93AutomatingGenerationOfTests}.
+A test framework provides the generated inputs to the IUT and checks whether it responds as specified.
+
+% ********************************************************************
+% ****************** Related Work ************************************
+% ********************************************************************
 \section{Related Work}
 \label{sec:related_work}
 
-Our work builds primarily on the "eXtreme Modelling" approach proposed by Gravell, et. al. \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}, which includes three characteristics:
+Our work builds primarily on the "eXtreme Modelling" approach proposed by Gravell, et. al. \cite{Gravell11ConcurrentDevelopmentOfModelAndImplementation}, and closely related work by Augusto, et. al.\cite{Augusto03ValidatingBusinessSystems}. 
+In these papers, the authors discuss the co-evolution of two e-business applications implemented in Java with several small models written in Promela and B.
+They describe specification engineering techniques; for example, holding regular meetings between modellers and implementers, and maintaining a dictionary to translate between names in the model and the implementation.
+Such techniques seem promising, but the authors analyze their effectiveness when practiced on an example application developed by a team of four academics, not on commercial software developed by hundreds of engineers.
+We have attempted to put the ideas of "eXtreme Modelling" into practice with complex commercial software instead of a research prototype, and using TLA+ and C++ instead of Java, B, and Promela.
+To our knowledge, no prior research demonstrates all characteristics of "eXtreme Modelling" in industry.
 
-\begin{enumerate}
-\item The specifications and implementation co-evolve.
-\item Multiple specifications model aspects of the system.
-\item The implementation's conformance to its specifications is continuously tested.
-\end{enumerate}
-
-% In related work by Augusto, et. al.\cite{Augusto03ValidatingBusinessSystems}, the authors discusses the co-evolution of a Java implementation with several small specifications written in Promela and B.
-% They describe specification engineering techniques; for example, holding regular meetings between specifiers and implementers, and maintaining a dictionary to translate between names in the specification and the implementation.
-% Such engineering techniques seem promising, but the authors analyze their effectiveness when practiced on an example application developed by a team of four academics, not on commercial software developed by hundreds of engineers.
-
-We have attempted to put the eXtreme Modelling ideas into practice with complex commercial software instead of a research prototype, and using TLA+ and C++ instead of Java, B, and Promela. To our knowledge, no prior research demonstrates all three characteristics of eXtreme Modelling in industry.
-
-A variety of methods have been proposed to ensure that an implementation conforms to its formal specification.
-Some projects use the same language for spec and implementation\cite{KerGre99},
-or generate implementation code from the spec\cite{Houhou17CodeGenerationFromSpecification},
-or apply model-checking or formal verification directly to the implementation\cite{Holzmann04ModelDrivenVerification},
-or perform verified stepwise refinement from the high-level spec all the way down to the implementation\cite{Eiriksson95UsingFormalVerification}.
+A variety of other methods have been proposed to ensure that an implementation conforms to its formal models.
+Some projects use the same language for spec and implementation \cite{KerGre99}, some generate implementation code from the spec \cite{Houhou17CodeGenerationFromSpecification}, others apply model-checking or formal verification directly to the implementation \cite{Holzmann04ModelDrivenVerification, Chudnov18ContinuousFormalVerification}, and yet others perform verified step-wise refinement from the high-level spec all the way down to the implementation \cite{Eiriksson95UsingFormalVerification}.
 Any of these methods provides high confidence that the implementation conforms (although even a verified system is not bug-free \cite{Fonseca17EmpiricalStudy}). 
 However, these methods cannot be used with our system, MongoDB.
-In the research we have reviewed, they are limited to small programs written in C, or to specialized languages such as Prolog; they have not been demonstrated with our implementation language, C++, or other languages popular for large systems, such as Java.
-They cannot be used when writing new specifications for a system that has already been implemented.
-
-The "eXtreme Modelling" approach includes two testing methods that are promising for MongoDB: model-based testing\cite{Utting06PracticalModelBasedTesting} and model-based trace-checking\cite{Jard83AnApproachToTestingSpecifications, MBTC}. The former method uses the specification to generate test cases, either exhaustively or a carefully selected subset\cite{Dick93AutomatingGenerationOfTests}.
-These tests exercise the implementation under test (IUT) to determine if it responds as specified to a variety of inputs.
-In the latter, model-based trace-checking, the IUT is exercised with an integration test, random test, user test, or by observing its behavior in production.
-The IUT produces an execution trace that captures its sequence of state changes.
-This execution trace is checked against the model, either while the IUT is running or post-hoc, to verify that the trace is a permitted behavior of the specification.
-The greater the variety of observed behaviors, the more confidence one has in the implementation's conformance.
+In the research we have reviewed, they are limited to small programs, either written in C or a specialized language such as Prolog; they have not been demonstrated with our implementation language, C++, nor on very large software systems such as ours, which is over 700,000 executable lines of code.
+They also cannot be used when writing new models for a system that has already been implemented.
 
 Ural et. al. in \cite{Ural84AutomatedTestingOfProtocolSpecifications} propose to begin with a high-level specification and refine it in stages, using MBTC to gain confidence that each stage's model is equivalent to the previous stage.
-Co-evolution of specification and implementation is not practical with this technique, because one would have to repeat the effort of stepwise refinement from top to bottom with each change, and it is unclear if multiple specifications could describe a single system.
+This technique is incompatible with "eXtreme Modelling": multiple high-level specifications cannot describe a single system, and co-evolution of model and implementation is not practical with this technique, because one would have to repeat the effort of step-wise refinement from top to bottom with each change.
 
-% Tasiran et. al. \cite{Tasiran03AlphaMicroprocessor} implement MBTC to check that a simulated microprocessor's behavior conforms to its TLA+ specification.
-% After each simulation step they invoke the TLC model-checker to determine if the step is permitted by the specification.
-% The authors describe a sophisticated method to measure their tests' coverage of the specification's state space: they first eliminate symmetrical states, and project to a smaller space with a view function, before comparing to the covered space.
-% They do not use multiple specifications, and there is no discussion of co-evolution of specification and implementation.
+Tasiran et. al. \cite{Tasiran03AlphaMicroprocessor} implement MBTC to check that a simulated microprocessor's behavior conforms to its TLA+ specification.
+After each simulation step they invoke the TLC model-checker to determine if the step is permitted by the specification.
+The authors describe a sophisticated method to measure their tests' coverage of the specification's state space: they first eliminate symmetrical states, and project to a smaller space with a view function, before comparing to the covered space.
 
-Neubauer et. al. in \cite{Neubauer12AutomatedContinuousQualityAssurance} use machine learning to infer a formal specification of a commercial software system from its observed behaviors.
+Neubauer et. al. in \cite{Neubauer12AutomatedContinuousQualityAssurance} use machine learning to infer a formal model of a commercial software system from its observed behaviors.
 They use MBTC to check if later execution traces of the system still conform to the inferred model; if not, either the system has a bug or the system behaved correctly and the model must be updated.
-This work comes close to eXtreme Modelling, but an inferred specification is quite different from one written by humans; the purpose of the former is solely to detect behavior changes in the implementation, the latter expresses the designers' intent.
+This work approaches the "eXtreme Modelling" development style, but an inferred model is quite different from one written by humans; the purpose of the former is solely to detect behavior changes in the implementation, the latter expresses the designers' intent.
 
-% TODO: Articles left to cite: \cite{Schultz19BugsLife, Schultz19TunableConsistency}
-
-\section{Problem Statement}
-\label{sec:problem_statement}
-
-\section{Model-Based Testing}
-\label{sec:model_based_testing}
-
-Solution and analysis for Max's work
-
+% ********************************************************************
+% ****************** MBTC ********************************************
+% ********************************************************************
 \section{Model-Based Trace-Checking}
 \label{sec:model_based_trace_checking}
 
-MongoDB database servers are typically deployed as a redundant group called a "replica set", which uses protocols inspired by Raft\cite{Ongaro14Raft} to elect a leader and replicate data changes to followers. Each replica stores a log of all operations (the "oplog"), a term counter that is incremented each election, and a timestamp representing the newest operation it knows has been committed by a majority of replicas (the "commit point"). We have written several TLA+ specifications to describe aspects of our protocol. Our goal was to test that a replica set's actual behavior conforms.
-
-\subsection{Solution}
-
-% 392 jstests in replsets/
-% counting the following as "fuzz tests that exercise our replication protocol"
-% initial_sync_multiversion_fuzzer_gen
-% initial_sync_fuzzer_gen
-% rollback_multiversion_fuzzer_gen
-% rollback_fuzzer_gen
-% rollback_fuzzer_clean_shutdowns_gen
-% rollback_fuzzer_unclean_shutdowns_gen
-% jstestfuzz_replication_continuous_stepdown_flow_control_gen
-% jstestfuzz_replication_gen
-% jstestfuzz_replication_multiversion_gen
-% jstestfuzz_replication_initsync_gen
-Prior to our research, there were roughly 400 integration tests handwritten in Javascript that exercise our replication protocol, and 10 fuzz tests that pause, disconnect, and terminate servers at random while the replica set is performing regular operations. We wanted to run these tests with additional trace logging, then use MBTC to check if the traces conform to our specifications.
-
-% TODO: cite https://github.com/mongodb/mongo/blob/master/src/mongo/db/repl/tla_plus/RaftMongo/RaftMongo.tla
-% Some say we should connect github.com/mongodb/mongo to Zenodo to get a DOI number, but that requires Office IT perms
-% Uploading a repo snapshot to FigShare might be an easier way to get a DOI, or else just cite a URL with a commit hash
-For our prototype we chose one of our specifications, a 345-line TLA+ file called \texttt{RaftMongo.tla}, which models the gossiping of the commit point among replicas. Each replica's state is modeled with four variables:
+Each replica in a MongoDB replica set stores:
 
 \begin{enumerate}
-\item its role (leader or follower)
-\item the newest election term it knows
-\item the newest commit point it knows
-\item the contents of its oplog
+\item A log of all operations (the "oplog")
+\item A term counter that is incremented each election
+\item A (timestamp, term) pair representing the newest operation it knows has been committed by a majority of replicas (the "commit point")
 \end{enumerate}
 
-There are seven named state transitions in the specification; they represent a write operation, an election, the replication of a data change, the gossipping of the commit point between replicas, and so on. 
+MongoDB's Replication Team has written several TLA+ models to describe aspects of MongoDB, and even different aspects of the core replication protocol. 
+Our goal was to test that a replica set's actual behavior conforms to these models.
+
+\subsection{Solution}
+\label{subsec:mbtc_solution}
+
+Prior to our research, there were 423 integration tests handwritten in Javascript that exercise our replication protocol, and 23 fuzz testing suites that pause, disconnect, and terminate servers at random while the replica set is performing regular operations. 
+We wanted to run these tests with additional tracing, and then use MBTC to check if the traces conform to our models.
+
+For our prototype we chose one of our models, a 345-line TLA+ file called \texttt{RaftMongo.tla} in the MongoDB repository \cite{MongoGitHub}, which models the gossiping of the commit point among replicas.
+This model is based on Diego Ongaro's TLA+ spec for Raft \cite{Ongaro14TLA+Raft}, with several key modifications.
+One difference is that MongoDB's replication protocol is pull based rather than push based; follower nodes request oplog entries from the leader so they can append them rather than the leader requesting follower nodes to append oplog entries to their own logs.
+\texttt{RaftMongo.tla} is focused more on replica member state rather than on messages passed throughout the replica set.
+\texttt{RaftMongo.tla} is also a more abstract spec, testing fewer invariants to focus on commit point propagation.
+
+Each replica's state is modeled with four variables:
+
+\begin{enumerate}
+\item Its role (leader or follower)
+\item The newest election term it knows
+\item The newest commit point it knows
+\item The contents of its oplog
+\end{enumerate}
+
+There are seven named state transitions in the model; they represent a write operation, an election, the replication of a data change, the gossiping of the commit point between replicas, and so on. 
+When we configure this model with 3 replicas and constrain the model-checker to at most 3 terms and oplogs up to 3 entries long, TLC successfully model-checks it and discovers 371,368 distinct states.
+TLC validates an invariant that committed writes are not rolled back and a temporal property that the commit point is eventually propagated.
+
 % TODO: maybe more detail, or a diagram about RaftMongo.tla
-% Counting commit f515d2ad which adds 275 lines, and rounding up because there were later adjustments
-We located code paths in MongoDB corresponding to these seven state transitions and added logging statements, enabled only in testing, which emit as JSON the values of the four state variables above. The total code changes required approximately 300 lines of additional C++.
+% Reverting logging in commit bcae9e67774088 made 617 deletions,
+% minus 42 are JS, 5 are SCons, leaves 570 C++
+We located code paths in MongoDB corresponding to these seven state transitions and added tracing statements, enabled only in testing, which used our logging framework to emit as JSON the values of the four state variables above. 
+The total code changes required 570 lines of C++.
 
-MBTC with a distributed system requires a partial order of trace events; we achieved a strict order by running all processes on one machine and adding millisecond sleeps where necessary while the system is under test. (Jard et. al. describe a solution with vector clocks \cite{Jard94GeneralApproachToTraceChecking}.)
+MBTC with a distributed system requires a partial order of trace events; we achieved a strict order by running all processes on one machine and adding millisecond sleeps where necessary while the system was under test. 
+(Jard et. al. describe a solution with vector clocks \cite{Jard94GeneralApproachToTraceChecking}.)
 
-% https://evergreen.mongodb.com/version/5e25ba97c9ec44650aa9944f
-% replica_sets suite:
-% https://evergreen.mongodb.com/task/mongodb_mongo_master_enterprise_rhel_62_64_bit_replica_sets_patch_fad0f06911036b04c5b40789d6ee5c58c4108f00_5e25ba97c9ec44650aa9944f_20_01_20_14_35_04
-% 352 passed, 62 failed (presumably because they used arbiters or otherwise incompatible with trace logging)
-% git clone https://github.com/will62794/faster-local-testing/
-% python getlogs.py USER APIKEY --task mongodb_mongo_master_enterprise_rhel_62_64_bit_replica_sets_patch_fad0f06911036b04c5b40789d6ee5c58c4108f00_5e25ba97c9ec44650aa9944f_20_01_20_14_35_04
+% Run on Jesse's workstation at commit https://github.com/ajdavis/mongo/commit/95f70b
+% python3 buildscripts/resmoke.py --suites=replica_sets --storageEngine=wiredTiger --continueOnFailure --storageEngineCacheSizeGB=1 --alwaysUseLogFiles --jobs=16
+% [resmoke] 2020-01-28T11:28:13.268-0500 Summary of replica_sets suite: 423 test(s) ran in 54885.49 seconds (303 succeeded, 0 were skipped, 120 failed, 0 errored)
 
-We enabled trace logging in Evergreen. This produced a total of TODO trace events in our handwritten Javascript tests on a particular run. We also selected one of our fuzz tests, called \texttt{rollback\_fuzzer}, for MBTC. This test randomly creates network partitions, causing replicas to temporarily diverge, then roll back writes in order to re-synchronize when the partitions are healed. A representative run of \texttt{rollback\_fuzzer} produced 2683 trace events.
+We enabled tracing for our 423 handwritten Javascript tests. 
+Of these, 120 failed due to incompatibilities with tracing. 
+We will discuss these incompatibilities in Section \ref{subsubsec:mbtc_impl_discrepencies}.
+In total, these tests produced 42,262 trace events. 
+We also selected one of our fuzz tests, called \texttt{rollback\_fuzzer}, for MBTC. 
+This test orchestrates network partitions, causing replicas to temporarily diverge and then to roll back writes in order to re-synchronize when the partitions are healed.
+Random CRUD and DDL operations are run against leader nodes in the set to test that, with high probability, all combinations of operations and their behavior on roll back work consistently.
+Nodes are also randomly restarted at specific points in the fuzz test to test that clean and unclean restarts during rollback procedures do not lead to data corruption.
+A representative run of \texttt{rollback\_fuzzer} produced 2,683 trace events.
 
 % How much TLA+ statement and space coverage did today's rollback_fuzzer suite hit?
 % from a given run of the suite, 1 JS file, 3 nodes, 2683 trace events
 % Follow instructions on https://github.com/tlaplus/tlaplus/issues/413
+We wrote a 484-line Python script \cite{ReplTraceChecker} to post-process trace logs. 
+The script merges the replicas' logs and sorts them by timestamp to obtain a sequence of trace events. 
+Each event describes only one replica's state at the moment it executes a state transition.
+In order to construct a sequence of states describing the \textit{entire} replica set, 
+the script begins with a known initial state, combines it with the first trace event to determine the next state, and so on. 
+The logic to combined a current state \ensuremath{S} with a trace event from replica node \ensuremath{N} to produce next state \ensuremath{S'} is as follows:
 
-% TODO: cite mongodb-labs/repl-trace-checker
-We wrote a 484-line Python script to post-process trace logs. The script merges the replicas' logs and sorts them by timestamp to obtain a sequence of trace events. Each event describes only one replica's state at the moment it executed a state transition, from which the script must construct a sequence of states for the entire replica set. The script begins with a known initial state, combines it with the first trace event to determine the next state, and so on. For example, in Figure \ref{figure:event-processing}, the replica set's current state has Server 1 as the leader in term 1. The script processes a log message from Server 2 announcing it has become leader in term 2, arriving at the next state.
+\begin{itemize}
+\item Role: If \ensuremath{N} was the leader and is now a follower, its role in \ensuremath{S'} is follower and the other nodes' roles are unchanged. If \ensuremath{N} was a follower and becomes a leader, the script assumes others become followers instantly. Thus the role of \ensuremath{N} in \ensuremath{S'} is "leader" and all others' roles are "follower".
+\item Term: The term of \ensuremath{N} in \ensuremath{S'} is replaced with the trace event's term. The other nodes' terms are unchanged.
+\item Commit point and oplog: Similar to term.
+\end{itemize}
+
+For example, in Figure \ref{figure:event-processing}, the replica set's current state has Node 1 as the leader in term 1. 
+The script processes a trace event from Node 2 announcing it has become leader in term 2, arriving at the next state.
 
 \begin{figure}
 \includegraphics[width=8cm]{event-processing.png}
@@ -254,7 +354,13 @@ We wrote a 484-line Python script to post-process trace logs. The script merges 
 \label{figure:event-processing}
 \end{figure}
 
-Once the script has constructed this sequence of states, it implements MBTC following a method proposed by Pressler\cite{Pressler18VerifyingSoftwareTracesTLAPlus}: it generates a TLA+ module called \texttt{Trace.tla} which includes the sequence of states (Figure \ref{fig:state-sequence}), and uses the TLC model-checker to check that the sequence is permitted by the \texttt{RaftMongo.tla} specification.
+Once the script constructed this sequence of states, it implemented MBTC following a method proposed by Pressler \cite{Pressler18VerifyingSoftwareTracesTLAPlus}: it generated a TLA+ module called \texttt{Trace.tla} which included the sequence of states (Figure \ref{fig:state-sequence}, a simplification from what our script actually produces), and used the TLC model-checker to check that the sequence was permitted by the \texttt{RaftMongo.tla} model. The entire data pipeline can be seen in Figure \ref{figure:MBTC-pipline}.
+
+\begin{figure}
+\includegraphics[width=8cm]{MBTC-pipeline.png}
+\caption{MBTC data pipeline}
+\label{figure:MBTC-pipline}
+\end{figure}
 
 \begin{figure}
 \begin{verbatim}
@@ -263,7 +369,7 @@ EXTENDS Integers, Sequences
 
 \* Trace generated from replica set log files. Each
 \* tuple is role, term, state, commit point, oplog
-\* per server.
+\* per node.
 
 Trace == <<
 <<
@@ -285,41 +391,70 @@ Trace == <<
 \end{figure}
 
 \subsection{Analysis}
+\label{subsec:mbtc_analysis}
 
 % Probably irrelevant: We considered either a Java harness that fed trace inputs to the TLC internal API, and we tried Pressler's method. Since the former was not fully implemented in Java for us, and the latter already works and includes nice Toolbox diagnostics, we stuck w/ the latter. We also considered Pressler's suggestion of using his method w/ a custom operator that avoids passing through TLA+ tuples as the repr of the trace, we didn't need to do that either.
 
 % Counting from Oct 10, 2019 https://github.com/mongodb-labs/repl-trace-checker/commit/5c96b44d to 
 % Jan 10+.
-We had intended to trace-check several specifications against traces from both handwritten and fuzz tests, deploy the trace-checker to our continuous integration system, and measure accumulated state space coverage over all tests. However, we applied trace-checking to only 5 handwritten tests and one fuzz test. Only one handwritten test generated traces that passed the trace-checker. We did not deploy to continuous integration nor measure coverage. The effort to implement MBTC proved so costly for us that we abandoned the project after two months of engineering effort. We faced discrepancies between our specifications and implementation, complexities with concurrency and locking, and incomplete support in TLC. In the following sections we describe these issues and propose future solutions.
+We had intended to trace-check several models against traces from both handwritten and fuzz tests, deploy the trace-checker to our continuous integration system, and measure accumulated state space coverage over all tests. 
+However, we applied trace-checking to only 5 handwritten tests and one fuzz test, \texttt{rollback\_fuzzer}. 
+Only one handwritten test generated traces that passed the trace-checker. 
+We did not deploy to continuous integration nor measure coverage. 
+The effort to implement MBTC proved so costly for us that we abandoned the project after two months of engineering effort. 
+We faced discrepancies between our models and implementation, complexities with concurrency and locking, and incomplete support in TLC. 
+In the following sections we describe these issues and propose future solutions.
 
 \subsubsection{Implementation discrepancies}
+\label{subsubsec:mbtc_impl_discrepencies}
 
-% TODO: cite SERVER-17934
+The first discrepancy we found involved MongoDB's concept of "arbiters".
+MongoDB replicas can be configured as arbiters which vote in elections but have no data. 
+\texttt{RaftMongo.tla} does not model arbiters and we did not implement tracing for them, thus tests which use arbiters failed when tracing was enabled.
+This was trivial to understand and to ignore, but gave us a hint that our specs did not conform to our implementation in as many cases as we wanted--- all of them.
 
-Trace checking the output of \texttt{rollback\_fuzzer} immediately reproduced a known violation of the specification: our implementation permits a new follower to commit oplog entries before it is fully synced with the leader, but this behavior should not be permitted, and is not modeled in \texttt{RaftMongo.tla}. This was not a \textit{transcription bug}; when we wrote \texttt{RaftMongo.tla} we did not have MBTC in mind, so we deliberately wrote an idealized spec. We intend to gradually bring our implementation into conformity. When MBTC caught this violation it increased our confidence in trace-checking. However, we needed some way to make the implementation pass trace checking. Since the violation came only 4 steps from the trace's start, and the checker stopped at the first violation, the violation left the remainder of the 2683 steps unchecked. To pass trace-checking, we could 1) update the specification to match today's implementation, 2) fix the implementation sooner than planned, 3) post-process the trace log to simulate a conformant implementation, or 4) avoid triggering the non-conforming behavior in testing. For this particular issue we chose solution 4, and modified \texttt{rollback\_fuzzer} to ensure all followers were fully synced before the test began any writes. However, we realized that updating all our fuzz tests and handwritten tests to avoid non-conforming behavior would not be economical, and would remove useful test coverage.
+Trace checking the output of \texttt{rollback\_fuzzer} immediately reproduced a known violation \cite{SERVER-17934} of the specification: our implementation permits a new follower to acknowledge oplog entries as it syncs them, before it is fully synced with the leader.
+However, this behavior should not be permitted, because it leads to entries being considered majority-committed while part of the majority is still performing an initial sync.
 
-Other discrepancies required solution 1, updating the specification. For example, \texttt{RaftMongo.tla} modeled elections as an instantaneous change from one leader to another. This simplification was reasonable when the specification was first written, since the election protocol was not its original focus. But in fact elections comprise multiple events over time, and MBTC required us to make the specification more complex to account for this. Each discrepancy we discovered through MBTC required us to judge which of the four solutions was most cost-effective.
+This behavior is not modeled in \texttt{RaftMongo.tla}, even though it is implemented.
+This was not a \textit{transcription bug}: when we wrote \texttt{RaftMongo.tla} we did not have MBTC in mind, so we deliberately wrote an idealized model. 
+We intend to gradually bring our implementation into conformity, with respect to this violation.
+When MBTC caught this violation it increased our confidence in trace-checking; however, it was not an acceptable outcome. 
+Since the violation came only 4 steps from the trace's start, and the checker stopped at the first violation, the remainder of the 2,683 steps were unchecked. 
+% TODO: reorder these numbers in the order they're discussed
+To permit \texttt{rollback\_fuzzer} to pass trace-checking, we could 1) update the model to match today's implementation, 2) fix the implementation sooner than planned, 3) post-process the traces to simulate a conformant implementation, or 4) avoid triggering the non-conforming behavior in testing. 
+For this particular issue we chose solution 4, and modified \texttt{rollback\_fuzzer} to ensure all followers were fully synced before the test began any writes. 
+However, we realized that updating all our tests to avoid non-conforming behavior would not be economical, and would remove useful test coverage.
 
-Lesson: In order to use a formal specification with MBTC, the specification should be written with MBTC in mind. We had started with specifications written for the sake of documenting and model-checking a design. If we started over, we would match our specifications to the known flaws in the implementation, and faithfully model multi-step events with multiple TLA+ actions.
+Other discrepancies required solution 1, updating the model. 
+For example, \texttt{RaftMongo.tla} originally modeled the election term as a single global number known by all replicas.
+This simplification was reasonable when the model was first written, since the election term was not the model's original focus. 
+But in fact new election terms are gossipped among replicas, which each learn the new term at a different time.
+MBTC required us to make the model more complex to match reality. 
+Each discrepancy we discovered through MBTC required us to judge which of the four solutions was cost-effective and undermine our confidence in the test least.
+Frequently, we chose to update the model: over the course of our research we added or changed 252 of the 345 lines of TLA+ in \texttt{RaftMongo.tla}.
+
+In several cases we chose solution 3, post-processing the logs to simulate conformance. For example, in \texttt{RaftMongo.tla}, when a node joins a replica set it copies the leader's entire oplog. In the implementation, a new node copies only recent entries. The \texttt{RaftMongo.tla} behavior more closely matches the Raft protocol that inspired it, and makes it simpler to express invariants such as "an entry is committed after it is replicated to a majority of nodes' oplogs". We resolved the discrepancy by adding logic to our Python script that filled in the missing entries while generating the state sequence. However, such an intrusive modification concerned us: a mistake in the Python script might mask a legitimate transcription error in MongoDB. Given more time, we would have updated the model to match the implementation.
 
 \subsubsection{Hierarchical locking, visibility}
+\label{subsubsec:mbtc_locking}
 
-% Logging and locking, inter- vs intra-process concurrency. specs like Raft model inter proc concurrency but not intra proc. That seems true of the literature in general: one or the other kind of concurrency not both. We've found it hard to do MBTC for Raft because we have to make one process appear single-threaded so we can snapshot its state in the trace log, this is very hard in a highly concurrent process. This may be true of nearly all distributed systems in production.
-
-% hierarchical locking is common to DBs (cite), but makes trace logging hard: at the layer being specified, must lock lower layers in order to get snapshot of system state for logging. this tends to contradict lock order rules. make a diagram!
-
-% for each event, must log after event has changed process state, before the change is visible to any other process (or even thread in this process). essentially must take all locks and latches and stop the entire process, but a system designed for fine-grained hierarchical locking resists such an approach.
-
-% oplog visibility - determining the moment in a process when its state can have an effect on other processes, better hope it's atomic or you must model both concurrencies in TLA+
-
-Formal specifications of distributed systems algorithms, such as Raft, model a concurrent system of interacting processes, but they typically model each process as single-threaded. Production database systems such as MongoDB, however, almost always have high intra-process concurrency and employ some degree of hierarchical locking\cite{Gray76SharedLocks}. It may not be feasible to log a consistent snapshot of such a process's state at the moment of a trace event.
+Formal specifications of distributed systems algorithms, such as Raft, model a concurrent system of interacting processes, but they typically model each process as single-threaded. 
+Production database systems such as MongoDB, however, almost always have high intra-process concurrency and employ some degree of hierarchical locking \cite{Gray76SharedLocks}. 
+MongoDB specifically combines a traditional lock manager, with storage-engine Multi-Version Concurrency Control (MVCC), C++ latches, and higher level concurrency control primitives like futures.
+It may not be feasible to log a consistent snapshot of such a process's state at the moment of a trace event.
 
 % _tlaPlusRaftMongoEvent_inlock's caller has replcoord mutex, the fn gets Global IS,
 % DB IS, and Collection IS locks for local.oplog.rs.
 % more details in https://mongodbcr.appspot.com/536420002/, particularly patch set 9
 % map locks A, B, C to RSTL, Global, replcoord mutex.
 
-For \texttt{RaftMongo.tla} specifically, a replica includes the contents of its oplog with each trace event. Acquiring the locks to obtain a snapshot of the oplog proved difficult. Suppose our \texttt{traceLogEvent} procedure (Figure \ref{fig:state-sequence}) must acquire locks A, B, and C, in that order, to read the oplog. Consider a procedure \texttt{becomeLeader} that acquires locks A and C, then changes the replica's role to Leader. If we add a call from \texttt{becomeLeader} to \texttt{traceLogEvent}, the latter must acquire lock B, but this is the wrong order and risks deadlocking with other threads.  General solutions are unpalatable: callers of \texttt{traceLogEvent} could be responsible for acquiring all the locks it will need, but this encodes intimate knowledge about \texttt{traceLogEvent} into its callers, and it significantly alters the system's behavior under test. Furthermore, MongoDB has no general Two-Phase Locking\cite{Eswaran76TwoPhaseLocking} framework, so such changes would be labor-intensive.
+To implement MBTC for \texttt{RaftMongo.tla}, a replica must include the contents of its oplog with each trace event,
+but acquiring the locks to obtain a snapshot of the oplog proved difficult. 
+Suppose our \texttt{traceLogEvent} procedure (Figure \ref{fig:traceLogEvent}) must acquire locks A, B, and C, in that order, to read the oplog.
+Consider a procedure \texttt{becomeLeader} that acquires locks A and C, then changes the replica's role to Leader. 
+If we add a call from \texttt{becomeLeader} to \texttt{traceLogEvent}, the latter must acquire lock B, but this is the wrong order and risks deadlocking with other threads.
+General solutions are unpalatable: callers of \texttt{traceLogEvent} could be responsible for acquiring all the locks it will need, but this encodes intimate knowledge about \texttt{traceLogEvent} into its callers, and it significantly alters the system's behavior under test.
 
 \begin{figure}
 \begin{verbatim}
@@ -340,19 +475,37 @@ PROCEDURE traceLogEvent() {
 }
 \end{verbatim}
 \caption{Pseudocode for a replica becoming a Leader}
-\label{fig:state-sequence}
+\label{fig:traceLogEvent}
 \end{figure}
 
-A related challenge is to log each trace event after it has occurred, but \textit{before} the change is visible to other replicas. E.g., when a leader appends an oplog entry, it must log the trace event after the entry has appeared in its own oplog, but before it can be replicated by any followers. If a follower logged a "Replicate Entry" event with an earlier timestamp than the leader's "Write Entry" event, the trace would violate the specification. We had to consider carefully when to log each trace event to achieve this fine timing.
+A related challenge was to log each trace event after it had occurred, but \textit{before} the change was visible to other replicas. 
+E.g., when a leader appends an oplog entry, it must log the trace event after the entry has appeared in its own oplog, but before it can be replicated by any followers. 
+If a follower logged a "Replicate Entry" event with an earlier timestamp than the leader's "Write Entry" event, the trace would violate the specification. 
+We had to consider carefully when to log each trace event to achieve this fragile timing.
 
-Solving the two challenges above, for each of the seven named state transitions in \texttt{RaftMongo.tla}, was the single most difficult aspect of our MBTC implementation, costing more than a month of engineering effort. We discovered code locations that obeyed our visibility requirements, and managed to avoid the need for acquiring locks out of order by exploiting MongoDB's MVCC features instead. We expect any MBTC implementation for a concurrent database will encounter similar complexities with hierarchical locking and visibility of state changes.
+Solving the two challenges above, for each of the seven named state transitions in \texttt{RaftMongo.tla}, was the single most difficult aspect of our MBTC implementation, costing roughly a month of engineering effort. 
+We discovered code locations that obeyed our visibility requirements, and managed to avoid the need for acquiring locks out of order by exploiting MongoDB's MVCC features instead.
+We expect any MBTC implementation for a concurrent database would encounter similar complexities with hierarchical locking and visibility of state changes.
 
-If we began again, we would rewrite our specification to model events, such as protocol messages, that are easily observed in the implementation. We would avoid modeling state that is difficult to snapshot, especially if it is protected with complex locking. If some state in the model cannot be logged by the implementation, Pressler proposes a "refinement mapping" technique\cite{Pressler18VerifyingSoftwareTracesTLAPlus} that is worth further investigation.
+% TODO: oplog truncation had to be papered over in post-processor
+
+If we began again, we would rewrite our specification to model events, such as protocol messages, akin to the original Raft TLA+ model \cite{Ongaro14TLA+Raft}, that are easily observed in the implementation. 
+We would avoid modelling state that is difficult to snapshot, especially if it were protected with complex locking. 
+If some state in the model cannot be logged by the implementation, Pressler proposes a "refinement mapping" technique \cite{Pressler18VerifyingSoftwareTracesTLAPlus} that is worth further investigation.
+
+Lesson: In order to use a formal model with MBTC, the model should be written with MBTC in mind. 
+We started with models written for the sake of documenting and model-checking a design. 
+If we started over, we would match our models to the known flaws in the implementation, and faithfully model multi-step events with multiple TLA+ actions.
 
 \subsubsection{TLA+ and TLC}
+\label{subsubsec:mbtc_tla_tlc}
 
 % TODO: cite https://github.com/tlaplus/tlaplus/issues/413
-Tool support for MBTC with TLA+ and TLC is a work in progress. Pressler's method works well to check traces of hundreds of events, but for thousands of events it is impractically slow. Pressler proposed, and Markus Kuppe has begun to implement, features to check long traces by bypassing the TLA+ parser in favor of a special-purpose Java extension to TLC. MBTC with TLA+ will be more convenient once these features are finalized and released, with several examples. Another missing feature is the ability to combine state-space coverage reports over multiple TLC executions, which would permit engineers to calculate the total coverage achieved by deploying MBTC to continuous integration.
+Tool support for MBTC with TLA+ and TLC is a work in progress. 
+Pressler's method worked well to check traces of hundreds of events, but for thousands of events it was impractically slow. 
+Pressler proposed, and Markus Alexander Kuppe has begun to implement, features to check long traces by bypassing the TLA+ parser in favor of a special-purpose Java extension to TLC. 
+MBTC with TLA+ will be more convenient once these features are finalized and released, with several examples. 
+Another missing feature is the ability to combine state-space coverage reports over multiple TLC executions, which would permit engineers to calculate the total coverage achieved by deploying MBTC to continuous integration.
 
 % Debug failures with TLC output or exploration in TLA+ Toolbox GUI
 
@@ -383,27 +536,69 @@ Tool support for MBTC with TLA+ and TLC is a work in progress. Pressler's method
 % Fixing spec can make it more complex and take longer to model-check and to read
 % Might make some configs intractable to model-check that would've been tractable while the spec was more abstract
 
-% the MBTC paper made it sound like adding trace logging was easy: they use AspectJ and other Java-specific tech to add fairly non-intrusive logging, with introspection to avoid writing a ton of code, and they don't discuss concurrency problems with getting a point-in-time snapshot of a single process's state. In our highly concurrent C++ application, which is very large and old and not written with MBTC in mind, we found trace logging to be the hardest(?) part to implement
+% the MBTC paper made it sound like adding tracing was easy: they use AspectJ and other Java-specific tech to add fairly non-intrusive logging, with introspection to avoid writing a ton of code, and they don't discuss concurrency problems with getting a point-in-time snapshot of a single process's state. In our highly concurrent C++ application, which is very large and old and not written with MBTC in mind, we found tracing to be the hardest(?) part to implement
 
+% ********************************************************************
+% ****************** MBT *********************************************
+% ********************************************************************
+\section{Model-Based Testing}
+\label{sec:model_based_testing}
+TODO (Max)
+\subsection{Solution}
+\label{subsec:mbt_solution}
+TODO (Max)
+\subsection{Analysis}
+\label{subsec:mbt_analysis}
+TODO (Max)
+
+% ********************************************************************
+% ****************** Conclusions *************************************
+% ********************************************************************
 \section{Conclusions}
 \label{sec:conclusions}
 
 And future work.
 
+% TODO: table layout, fit columns to content
+
+\begin{center}
+\begin{tabular}{ | m{11em} | m{5em}| m{6em} | } 
+\hline
+Task & Effort & Lines of Code \\  
+\hline
+Event tracing & 4 weeks & 570 C++ \\ 
+Update RaftMongo.tla & 1 week & 252 TLA+\\ 
+Python post-processor & 3 weeks & 484 Python \\ 
+\hline
+\end{tabular}
+\end{center}
+
 %\end{document}  % This is where a 'short' article might terminate
 
 % ensure same length columns on last page (might need two sub-sequent latex runs)
 \balance
-
+% ********************************************************************
+% ****************** Acknowledgements ********************************
+% ********************************************************************
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
-\label{sec:acknolwedgments}
-
+\label{sec:acknowledgments}
+Many experts have advised us, proposed workarounds for obstacles, reviewed our code, and reviewed drafts of this paper, including 
+David Bradford,
+Mark Callaghan,
+Siyuan Zhou,
+Will Schultz,
+Michael Cahill,
+Tess Avitabile,
+Henrik Edin,
+Andy Schwerin,
+and Ron Pressler.
+We are embarrassingly indebted to Markus Alexander Kuppe for answering our questions about TLC within minutes, and implementing features we requested within hours.
 
 % The following two commands are all you need in the
 % initial runs of your .tex file to
 % produce the bibliography for the citations in your paper.
-\bibliographystyle{abbrv}
+\bibliographystyle{abbrv-original-case}
 \bibliography{main}  % use main.bib file
 % You must have a proper ".bib" file
 %  and remember to run:
