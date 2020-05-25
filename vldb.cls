@@ -1407,7 +1407,7 @@
    \par\medskip\small\noindent{\bfseries PVLDB Reference Format:}\par\nobreak
    \noindent \@vldbAuthors.
    \noindent \@vldbTitle.
-   \noindent {\em PVLDB}, \@vldbVolume (\@vldbNumber): xxxx-yyyy, \@vldbYear.\par
+   \noindent {\em PVLDB}, \@vldbVolume (\@vldbNumber): 1346 - 1358, \@vldbYear.\par
    \noindent DOI: \@vldbDOI
 \par\egroup}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

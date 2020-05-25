@@ -16,7 +16,7 @@
 
 @book{Lamport02SpecifyingSystems,
 author = {Lamport, Leslie},
-title = {Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers},
+title = {Specifying Systems: The TLA\textsuperscript{+} Language and Tools for Hardware and Software Engineers},
 year = {2002},
 isbn = {032114306X},
 publisher = {Addison-Wesley Longman Publishing Co., Inc.},
@@ -159,7 +159,6 @@ lastaccessed = {},
 		 June 2, 2012",
   publisher =	"IEEE",
   year = 	"2012",
-  booktitle =	"FormSERA@ICSE",
   editor =	"Stefania Gnesi and Stefan Gruner and Nico Plat and
 		 Bernhard Rumpe",
   ISBN = 	"978-1-4673-1906-5",
@@ -167,27 +166,6 @@ lastaccessed = {},
   URL =  	"http://ieeexplore.ieee.org/xpl/mostRecentIssue.jsp?punumber=6220306;
 		 http://dl.acm.org/citation.cfm?id=2663689",
 }
-
-% @InProceedings{Fonseca17EmpiricalStudy,
-%   title =	"An Empirical Study on the Correctness of Formally
-% 		 Verified Distributed Systems",
-%   author =	"Pedro Fonseca, Kaiyuan Zhang, Xi Wang, and Arvind Krishnamurthy",
-%   bibdate =	"2019-06-23",
-%   bibsource =	"DBLP,
-% 		 http://dblp.uni-trier.de/https://doi.org/10.1145/3064176.3064183;
-% 		 DBLP,
-% 		 http://dblp.uni-trier.de/db/conf/eurosys/eurosys2017.html#FonsecaZWK17",
-%   booktitle =	"Proceedings of the Twelfth European Conference on
-% 		 Computer Systems, EuroSys 2017, Belgrade, Serbia, April
-% 		 23-26, 2017",
-%   publisher =	"ACM",
-%   year = 	"2017",
-%   booktitle =	"EuroSys",
-%   editor =	"Gustavo Alonso and Ricardo Bianchini and Marko
-% 		 Vukolic",
-%   ISBN = 	"978-1-4503-4938-3",
-%   pages =	"328--343",
-% }
 
 @InProceedings{Scott16MinimizingFaultyExecutions,
   title =	"Minimizing Faulty Executions of Distributed Systems",
@@ -279,21 +257,20 @@ isbn="978-3-319-96145-3"
      series = {SIGMOD ’19}
 }
 
- @article{Kamsky19TPCCMongoDB,
-     author = {Kamsky, Asya},
-     title = {Adapting TPC-C Benchmark to Measure Performance of Multi-Document Transactions in MongoDB},
-     year = {2019},
-     issue_date = {August 2019},
-     publisher = {VLDB Endowment},
-     volume = {12},
-     number = {12},
-     issn = {2150-8097},
-     url = {https://doi.org/10.14778/3352063.3352140},
-     doi = {10.14778/3352063.3352140},
-     journal = {Proc. VLDB Endow.},
-     month = aug,
-     pages = {2254–2262},
-     numpages = {9}
+@article{Kamsky19TPCCMongoDB,
+author = {Kamsky, Asya},
+title = {Adapting TPC-C Benchmark to Measure Performance of Multi-Document Transactions in MongoDB},
+year = {2019},
+issue_date = {August 2019},
+publisher = {VLDB Endowment},
+volume = {12},
+number = {12},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3352063.3352140},
+doi = {10.14778/3352063.3352140},
+journal = {PVLDB},
+pages = {2254–2262},
+numpages = {9}
 }
 
 @article{Guo17MongoDBFuzzTester,
@@ -316,11 +293,10 @@ doi = {10.1145/3052937}
 @article{Schultz19TunableConsistency,
  author = {Schultz, William and Avitabile, Tess and Cabral, Alyson},
  title = {Tunable Consistency in MongoDB},
- journal = {Proc. VLDB Endow.},
+ journal = {PVLDB},
  issue_date = {August 2019},
  volume = {12},
  number = {12},
- month = aug,
  year = {2019},
  issn = {2150-8097},
  pages = {2071--2081},
@@ -413,7 +389,7 @@ doi = {10.5121/csit.2017.71204}
  booktitle = {Proceedings of the 45th Annual Design Automation Conference},
  pages = {806–811},
  numpages = {6},
- keywords = {formal verification, explicit state enumeration, TLC, protocol verification, microarchitecture verification, TLA+},
+ keywords = {formal verification, explicit state enumeration, TLC, protocol verification, microarchitecture verification, TLA\textsuperscript{+}},
  location = {Anaheim, California},
  series = {DAC ’08}
 }
@@ -495,41 +471,12 @@ isbn="978-3-642-02658-4"
   year = 	"1976",
 }
 
-% @Article{Eswaran76TwoPhaseLocking,
-%   author =	"K. P. Eswaran and J. N. Gray and R. A. Lorie and I. L.
-% 		 Traiger",
-%   title =	"The Notions of Consistency and Predicate Locks in a
-% 		 Database System",
-%   journal =	"Communications of the ACM",
-%   volume =	"19",
-%   number =	"11",
-%   pages =	"624--633",
-%   month =	nov,
-%   year = 	"1976",
-%   refs = 	"8",
-%   checked =	"19940628",
-%   source =	"Dept. Library",
-%   keywords =	"consistency, lock, database, concurrency,
-% 		 transaction",
-%   abstract =	"In database systems, users access shared data under
-% 		 the assumption that the data satisfies certain
-% 		 consistency constraints. This paper defines the
-% 		 concepts of transaction, consistency and schedule and
-% 		 shows that consistency requires that a transaction
-% 		 cannot request new locks after releasing a lock. Then
-% 		 it is argued that a transaction needs to lock a logical
-% 		 rather than a physical subset of the database. These
-% 		 subsets may be specified by predicates. An
-% 		 implementation of predicate locks which satisfies the
-% 		 consistency condition is suggested.",
-% }
-
 @InProceedings{Lamport99TLAPlus,
   author =	"L. Lamport",
   booktitle =	"Calculational System Design",
   year = 	"1999",
   editors =	"M. Broy and R. Steinbr{\"u}ggen",
-  title =	"Specifying Concurrent Systems with {TLA+}",
+  title =	"Specifying Concurrent Systems with {TLA\textsuperscript{+}}",
   publisher =	"IOS Press",
   address =	"Amsterdam",
 }
@@ -753,7 +700,7 @@ keywords = {distributed groupware systems, replication, algebraic specification,
 }
 
 @online{Schultz19BugsLife,
-  title =	"A Bug’s Life: Fixing a MongoDB Replication Protocol Bug with TLA+",
+  title =	"A Bug’s Life: Fixing a MongoDB Replication Protocol Bug with TLA\textsuperscript{+}",
   author =	"William Schultz and Siyuan Zhou",
   year = 	"2019",
   bibdate =	"2019-09-12",
@@ -761,7 +708,7 @@ keywords = {distributed groupware systems, replication, algebraic specification,
 }
 
 @online{Pressler18VerifyingSoftwareTracesTLAPlus,
-  title =	"Verifying Software Traces Against a Formal Specification with TLA+ and TLC",
+  title =	"Verifying Software Traces Against a Formal Specification with TLA\textsuperscript{+} and TLC",
   author =	"Ron Pressler",
   year = 	"2018",
   bibdate =	"2018-12-13",
@@ -769,7 +716,7 @@ keywords = {distributed groupware systems, replication, algebraic specification,
 }
 
 @online{Ongaro14TLA+Raft,
-  title =	"TLA+ specification for the Raft consensus algorithm",
+  title =	"TLA\textsuperscript{+} specification for the Raft consensus algorithm",
   author =	"Diego Ongaro",
   year = 	"2014",
   bibdate =	"2014-12-02",
@@ -800,7 +747,7 @@ keywords = {distributed groupware systems, replication, algebraic specification,
 
 @inproceedings{TLC,
 author = {Yu, Yuan and Manolios, Panagiotis and Lamport, Leslie},
-title = {Model Checking TLA+ Specifications},
+title = {Model Checking TLA\textsuperscript{+} Specifications},
 year = {1999},
 isbn = {3540665595},
 publisher = {Springer-Verlag},
@@ -831,7 +778,7 @@ series = {CHARME ’99}
 
 @misc{TLAPlusIssue413,
   key  = {TLAPlusIssue413},
-  title  = {{TLA+ issue 413}},
+  title  = {{TLA\textsuperscript{+} issue 413}},
   howpublished = {\url{https://github.com/tlaplus/tlaplus/issues/413}}
 }
 
@@ -849,6 +796,29 @@ series = {CHARME ’99}
 
 @misc{LockingTLA,
   key  = {LockingTLA},
-  title  = {{LockingTLA}},
+  title  = {{TLA\textsuperscript{+} specification for MongoDB Locking Behaviors}},
   howpublished = {\url{https://github.com/visualzhou/mongo-locking-tla}}
+}
+
+@Article{Lamport2018AuxiliaryVariables,
+  title =	"Auxiliary Variables in TLA\textsuperscript{+}",
+  author =	"Leslie Lamport and Stephan Merz",
+  journal =	"CoRR",
+  year = 	"2017",
+  volume =	"abs/1703.05121",
+  bibdate =	"2018-08-13",
+  bibsource =	"DBLP,
+		 http://dblp.uni-trier.de/db/journals/corr/corr1703.html#LamportM17",
+  URL =  	"http://arxiv.org/abs/1703.05121",
+}
+
+@TechReport{Abadi88ExistenceOfRefinementMapping,
+  author =	"Martin Abadi and Leslie Lamport",
+  title =	"The Existence of Refinement Mappings.",
+  institution =  "Digital Equipment Corporation, Systems Research
+		 Centre",
+  number =	"29",
+  pages =	"42 pages.",
+  month =	"14 " # aug,
+  year = 	"1988"
 }
